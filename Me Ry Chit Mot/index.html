@@ -435,44 +435,38 @@
             font-weight: 800;
             font-size: 16px;
             box-shadow: 0 0 30px rgba(255, 0, 0, 0.6);
-            animation: pulse 1.5s infinite;
+            animation: pulseGlow 1.5s infinite;
             position: relative;
-            transition: all 0.15s ease-out;
         }
 
         button.dodging {
-            animation: pulse 1.5s infinite, shake 0.15s ease-out;
+            animation: none !important;
         }
 
         @keyframes shake {
             0% {
-                transform: scale(1.05);
-            }
-
-            25% {
-                transform: rotate(-5deg) scale(1.1);
-            }
-
-            75% {
-                transform: rotate(5deg) scale(1.1);
-            }
-
-            100% {
-                transform: scale(1);
-            }
-        }
-
-        @keyframes pulse {
-            0% {
-                transform: scale(1);
+                box-shadow: 0 0 40px rgba(255, 0, 0, 0.8);
             }
 
             50% {
-                transform: scale(1.05);
+                box-shadow: 0 0 60px rgba(255, 215, 0, 0.9);
             }
 
             100% {
-                transform: scale(1);
+                box-shadow: 0 0 40px rgba(255, 0, 0, 0.8);
+            }
+        }
+
+        /* Use box-shadow animation instead of transform to not conflict with JS translate */
+        @keyframes pulseGlow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 30px rgba(255, 0, 0, 0.6);
+            }
+
+            50% {
+                box-shadow: 0 0 50px rgba(255, 0, 0, 0.8), 0 0 80px rgba(255, 215, 0, 0.4);
             }
         }
 
@@ -502,6 +496,7 @@
         .button-wrapper {
             position: relative;
             display: inline-block;
+            transition: transform 0.25s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         }
 
         #btnStart.caught {
@@ -634,12 +629,13 @@
             if (dodgeCount >= maxDodges) return;
 
             const btn = document.getElementById('btnStart');
+            const wrapper = document.querySelector('.button-wrapper');
             const questionText = document.querySelector('.question-text');
-            if (!btn) return;
+            if (!btn || !wrapper) return;
 
             // Generate random position - larger range for visible jump
             const jumpDistanceX = 150 + Math.random() * 200; // 150-350px
-            const jumpDistanceY = 50 + Math.random() * 80;   // 50-130px
+            const jumpDistanceY = 40 + Math.random() * 60;   // 40-100px
 
             // Alternate left/right based on dodge count
             const directionX = (dodgeCount % 2 === 0) ? 1 : -1;
@@ -649,16 +645,14 @@
             let newY = directionY * jumpDistanceY;
 
             // Keep within viewport
-            const btnRect = btn.getBoundingClientRect();
             const maxAllowedX = (window.innerWidth / 2) - 100;
-            const maxAllowedY = 100;
+            const maxAllowedY = 80;
 
             newX = Math.max(-maxAllowedX, Math.min(maxAllowedX, newX));
             newY = Math.max(-maxAllowedY, Math.min(maxAllowedY, newY));
 
-            // Apply jump with animation
-            btn.style.transition = 'transform 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
-            btn.style.transform = `translate(${newX}px, ${newY}px) scale(1.1)`;
+            // Move the WRAPPER (not the button) to avoid CSS animation conflict
+            wrapper.style.transform = `translate(${newX}px, ${newY}px)`;
             btn.classList.add('dodging');
 
             // Update tease message
@@ -668,24 +662,21 @@
 
             dodgeCount++;
 
-            // Reset scale after animation
+            // Remove dodging class after animation
             setTimeout(() => {
-                btn.style.transform = `translate(${newX}px, ${newY}px) scale(1)`;
                 btn.classList.remove('dodging');
-            }, 200);
+            }, 250);
 
             // After max dodges, reset position and allow click
             if (dodgeCount >= maxDodges) {
                 setTimeout(() => {
-                    btn.style.transition = 'transform 0.3s ease-out';
-                    btn.style.transform = 'translate(0, 0) scale(1.15)';
+                    wrapper.style.transform = 'translate(0, 0)';
                     btn.classList.add('caught');
                     if (questionText) {
                         questionText.innerHTML = "Bắt được rồi! 💖 Nhấn để mở quà nào! 🎁";
                     }
 
                     setTimeout(() => {
-                        btn.style.transform = 'translate(0, 0) scale(1)';
                         btn.classList.remove('caught');
                     }, 500);
                 }, 400);

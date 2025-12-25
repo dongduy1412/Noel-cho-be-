@@ -623,67 +623,81 @@
 
         function initPlayfulButton() {
             const btn = document.getElementById('btnStart');
-            const questionText = document.querySelector('.question-text');
             if (!btn) return;
 
-            btn.addEventListener('mouseenter', handleButtonDodge);
+            // Use click for both desktop and mobile
             btn.addEventListener('click', handleButtonClick);
-            btn.addEventListener('touchstart', handleButtonDodge);
+            btn.addEventListener('mouseenter', handleButtonDodge);
         }
 
         function handleButtonDodge(e) {
             if (dodgeCount >= maxDodges) return;
 
-            e.preventDefault();
-            const btn = e.target;
+            const btn = document.getElementById('btnStart');
             const questionText = document.querySelector('.question-text');
+            if (!btn) return;
 
-            // Move button to random position within safe bounds
-            const container = btn.parentElement.parentElement;
-            const containerRect = container.getBoundingClientRect();
+            // Generate random position - larger range for visible jump
+            const jumpDistanceX = 150 + Math.random() * 200; // 150-350px
+            const jumpDistanceY = 50 + Math.random() * 80;   // 50-130px
+
+            // Alternate left/right based on dodge count
+            const directionX = (dodgeCount % 2 === 0) ? 1 : -1;
+            const directionY = (Math.random() > 0.5) ? 1 : -1;
+
+            let newX = directionX * jumpDistanceX;
+            let newY = directionY * jumpDistanceY;
+
+            // Keep within viewport
             const btnRect = btn.getBoundingClientRect();
+            const maxAllowedX = (window.innerWidth / 2) - 100;
+            const maxAllowedY = 100;
 
-            // Calculate safe movement range
-            const maxX = Math.min(window.innerWidth - btnRect.width - 50, 300);
-            const maxY = 80;
+            newX = Math.max(-maxAllowedX, Math.min(maxAllowedX, newX));
+            newY = Math.max(-maxAllowedY, Math.min(maxAllowedY, newY));
 
-            // Random direction away from mouse
-            let newX = (Math.random() - 0.5) * maxX * 2;
-            let newY = (Math.random() - 0.5) * maxY * 2;
-
-            // Apply dodge
+            // Apply jump with animation
+            btn.style.transition = 'transform 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+            btn.style.transform = `translate(${newX}px, ${newY}px) scale(1.1)`;
             btn.classList.add('dodging');
-            btn.style.transform = `translate(${newX}px, ${newY}px)`;
 
             // Update tease message
-            questionText.textContent = teaseMessages[dodgeCount] || teaseMessages[teaseMessages.length - 1];
+            if (questionText) {
+                questionText.innerHTML = teaseMessages[dodgeCount] || teaseMessages[teaseMessages.length - 1];
+            }
 
             dodgeCount++;
 
-            // Remove dodging class after animation
+            // Reset scale after animation
             setTimeout(() => {
+                btn.style.transform = `translate(${newX}px, ${newY}px) scale(1)`;
                 btn.classList.remove('dodging');
-            }, 150);
+            }, 200);
 
             // After max dodges, reset position and allow click
             if (dodgeCount >= maxDodges) {
                 setTimeout(() => {
-                    btn.style.transform = 'translate(0, 0)';
+                    btn.style.transition = 'transform 0.3s ease-out';
+                    btn.style.transform = 'translate(0, 0) scale(1.15)';
                     btn.classList.add('caught');
-                    questionText.textContent = "Được rồi! Mở quà nào! 🎁💝";
+                    if (questionText) {
+                        questionText.innerHTML = "Bắt được rồi! 💖 Nhấn để mở quà nào! 🎁";
+                    }
 
                     setTimeout(() => {
+                        btn.style.transform = 'translate(0, 0) scale(1)';
                         btn.classList.remove('caught');
                     }, 500);
-                }, 300);
+                }, 400);
             }
         }
 
         function handleButtonClick(e) {
             if (dodgeCount < maxDodges) {
                 e.preventDefault();
+                e.stopPropagation();
                 handleButtonDodge(e);
-                return;
+                return false;
             }
             startSystem();
         }

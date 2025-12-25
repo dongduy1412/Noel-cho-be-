@@ -181,6 +181,7 @@
         .gift-box-wrapper {
             perspective: 1000px;
             animation: giftBeat 1s ease-in-out infinite;
+            cursor: pointer;
         }
 
         @keyframes giftBeat {
@@ -435,38 +436,44 @@
             font-weight: 800;
             font-size: 16px;
             box-shadow: 0 0 30px rgba(255, 0, 0, 0.6);
-            animation: pulseGlow 1.5s infinite;
+            animation: pulse 1.5s infinite;
             position: relative;
+            transition: all 0.15s ease-out;
         }
 
         button.dodging {
-            animation: none !important;
+            animation: pulse 1.5s infinite, shake 0.15s ease-out;
         }
 
         @keyframes shake {
             0% {
-                box-shadow: 0 0 40px rgba(255, 0, 0, 0.8);
+                transform: scale(1.05);
             }
 
-            50% {
-                box-shadow: 0 0 60px rgba(255, 215, 0, 0.9);
+            25% {
+                transform: rotate(-5deg) scale(1.1);
+            }
+
+            75% {
+                transform: rotate(5deg) scale(1.1);
             }
 
             100% {
-                box-shadow: 0 0 40px rgba(255, 0, 0, 0.8);
+                transform: scale(1);
             }
         }
 
-        /* Use box-shadow animation instead of transform to not conflict with JS translate */
-        @keyframes pulseGlow {
-
-            0%,
-            100% {
-                box-shadow: 0 0 30px rgba(255, 0, 0, 0.6);
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
             }
 
             50% {
-                box-shadow: 0 0 50px rgba(255, 0, 0, 0.8), 0 0 80px rgba(255, 215, 0, 0.4);
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
             }
         }
 
@@ -496,7 +503,6 @@
         .button-wrapper {
             position: relative;
             display: inline-block;
-            transition: transform 0.25s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         }
 
         #btnStart.caught {
@@ -561,7 +567,7 @@
                     <div class="gift-box-body"></div>
                 </div>
             </div>
-            <div class="intro-text">🎁 Nhấn phím bất kỳ để mở quà 🎁</div>
+            <div class="intro-text">🎁 Click vào hộp quà để mở 🎁</div>
         </div>
     </div>
 
@@ -618,77 +624,67 @@
 
         function initPlayfulButton() {
             const btn = document.getElementById('btnStart');
+            const questionText = document.querySelector('.question-text');
             if (!btn) return;
 
-            // Use click for both desktop and mobile
-            btn.addEventListener('click', handleButtonClick);
             btn.addEventListener('mouseenter', handleButtonDodge);
+            btn.addEventListener('click', handleButtonClick);
+            btn.addEventListener('touchstart', handleButtonDodge);
         }
 
         function handleButtonDodge(e) {
             if (dodgeCount >= maxDodges) return;
 
-            const btn = document.getElementById('btnStart');
-            const wrapper = document.querySelector('.button-wrapper');
+            e.preventDefault();
+            const btn = e.target;
             const questionText = document.querySelector('.question-text');
-            if (!btn || !wrapper) return;
 
-            // Generate random position - larger range for visible jump
-            const jumpDistanceX = 150 + Math.random() * 200; // 150-350px
-            const jumpDistanceY = 40 + Math.random() * 60;   // 40-100px
+            // Move button to random position within safe bounds
+            const container = btn.parentElement.parentElement;
+            const containerRect = container.getBoundingClientRect();
+            const btnRect = btn.getBoundingClientRect();
 
-            // Alternate left/right based on dodge count
-            const directionX = (dodgeCount % 2 === 0) ? 1 : -1;
-            const directionY = (Math.random() > 0.5) ? 1 : -1;
+            // Calculate safe movement range
+            const maxX = Math.min(window.innerWidth - btnRect.width - 50, 300);
+            const maxY = 80;
 
-            let newX = directionX * jumpDistanceX;
-            let newY = directionY * jumpDistanceY;
+            // Random direction away from mouse
+            let newX = (Math.random() - 0.5) * maxX * 2;
+            let newY = (Math.random() - 0.5) * maxY * 2;
 
-            // Keep within viewport
-            const maxAllowedX = (window.innerWidth / 2) - 100;
-            const maxAllowedY = 80;
-
-            newX = Math.max(-maxAllowedX, Math.min(maxAllowedX, newX));
-            newY = Math.max(-maxAllowedY, Math.min(maxAllowedY, newY));
-
-            // Move the WRAPPER (not the button) to avoid CSS animation conflict
-            wrapper.style.transform = `translate(${newX}px, ${newY}px)`;
+            // Apply dodge
             btn.classList.add('dodging');
+            btn.style.transform = `translate(${newX}px, ${newY}px)`;
 
             // Update tease message
-            if (questionText) {
-                questionText.innerHTML = teaseMessages[dodgeCount] || teaseMessages[teaseMessages.length - 1];
-            }
+            questionText.textContent = teaseMessages[dodgeCount] || teaseMessages[teaseMessages.length - 1];
 
             dodgeCount++;
 
             // Remove dodging class after animation
             setTimeout(() => {
                 btn.classList.remove('dodging');
-            }, 250);
+            }, 150);
 
             // After max dodges, reset position and allow click
             if (dodgeCount >= maxDodges) {
                 setTimeout(() => {
-                    wrapper.style.transform = 'translate(0, 0)';
+                    btn.style.transform = 'translate(0, 0)';
                     btn.classList.add('caught');
-                    if (questionText) {
-                        questionText.innerHTML = "Bắt được rồi! 💖 Nhấn để mở quà nào! 🎁";
-                    }
+                    questionText.textContent = "Được rồi! Mở quà nào! 🎁💝";
 
                     setTimeout(() => {
                         btn.classList.remove('caught');
                     }, 500);
-                }, 400);
+                }, 300);
             }
         }
 
         function handleButtonClick(e) {
             if (dodgeCount < maxDodges) {
                 e.preventDefault();
-                e.stopPropagation();
                 handleButtonDodge(e);
-                return false;
+                return;
             }
             startSystem();
         }
@@ -903,16 +899,13 @@
 
         function showMainExperience() {
             const introScreen = document.getElementById('intro-screen');
-            const uiLayer = document.getElementById('ui-layer');
 
             introScreen.classList.add('fade-out');
-            uiLayer.classList.add('visible');
-
-            // Initialize the playful dodge button
-            initPlayfulButton();
 
             setTimeout(() => {
                 introScreen.style.display = 'none';
+                // Go directly to tree + music!
+                startSystem();
             }, 1000);
         }
 
